@@ -29,6 +29,11 @@ var Engine = (function(global) {
     canvas.height = 606;
     doc.body.appendChild(canvas);
 
+    var numRows = 6;
+    var numCols = 5;
+    var colSize = canvas.width / numCols;
+    var rowSize = 83;
+
     /* This function serves as the kickoff point for the game loop itself
      * and handles properly calling the update and render methods.
      */
@@ -57,7 +62,7 @@ var Engine = (function(global) {
          * function again as soon as the browser is able to draw another frame.
          */
         win.requestAnimationFrame(main);
-    };
+    }
 
     /* This function does some initial setup that should only occur once,
      * particularly setting the lastTime variable that is required for the
@@ -94,7 +99,9 @@ var Engine = (function(global) {
         allEnemies.forEach(function(enemy) {
             enemy.update(dt);
         });
-        player.update();
+        if (player.update()) {
+            reset();
+        }
     }
 
     /* This function initially draws the "game level", it will then call
@@ -114,10 +121,8 @@ var Engine = (function(global) {
                 'images/stone-block.png',   // Row 3 of 3 of stone
                 'images/grass-block.png',   // Row 1 of 2 of grass
                 'images/grass-block.png'    // Row 2 of 2 of grass
-            ],
-            numRows = 6,
-            numCols = 5,
-            row, col;
+            ];
+        var row, col;
 
         /* Loop through the number of rows and columns we've defined above
          * and, using the rowImages array, draw the correct image for that
@@ -132,10 +137,9 @@ var Engine = (function(global) {
                  * so that we get the benefits of caching these images, since
                  * we're using them over and over.
                  */
-                ctx.drawImage(Resources.get(rowImages[row]), col * 101, row * 83);
+                ctx.drawImage(Resources.get(rowImages[row]), col * colSize, row * rowSize);
             }
         }
-
 
         renderEntities();
     }
@@ -151,7 +155,6 @@ var Engine = (function(global) {
         allEnemies.forEach(function(enemy) {
             enemy.render();
         });
-
         player.render();
     }
 
@@ -160,7 +163,11 @@ var Engine = (function(global) {
      * those sorts of things. It's only called once by the init() method.
      */
     function reset() {
-        // noop
+        // TODO: Differentiate between crash and finish?
+        allEnemies.forEach(function(enemy) {
+            enemy.reset();
+        });
+        player.reset();
     }
 
     /* Go ahead and load all of the images we know we're going to need to
@@ -181,4 +188,24 @@ var Engine = (function(global) {
      * from within their app.js files.
      */
     global.ctx = ctx;
+
+    return {
+        calcColumnCenter: function(col) {
+            // col from 0 .. numCols - 1
+            return Math.floor(colSize * (col /*+ 0.5 */));
+        },
+
+        calcRowCenter: function(row) {
+            // row from 0, .. numRows - 1
+            return Math.floor((numRows - row - 0.5) * rowSize);
+        },
+
+        columnCount: function() {
+            return numCols;
+        },
+
+        rowCount: function() {
+            return numRows;
+        }
+    };
 })(this);
