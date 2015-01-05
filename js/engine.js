@@ -85,7 +85,7 @@ var Engine = (function(global) {
      */
     function update(dt) {
         updateEntities(dt);
-        // checkCollisions();
+        checkCollisions();
     }
 
     /* This is called by the update function  and loops through all of the
@@ -100,7 +100,7 @@ var Engine = (function(global) {
             enemy.update(dt);
         });
         if (player.update()) {
-            reset();
+            reset('success');
         }
     }
 
@@ -140,8 +140,8 @@ var Engine = (function(global) {
                 ctx.drawImage(Resources.get(rowImages[row]), col * colSize, row * rowSize);
             }
         }
-
         renderEntities();
+        // ctx.fillText("Test", 10, 10);
     }
 
     /* This function is called by the render function and is called on each game
@@ -158,12 +158,34 @@ var Engine = (function(global) {
         player.render();
     }
 
+    function checkCollisions() {
+        var playerBounds = player.getBounds();
+        var bReset = false;
+        allEnemies.forEach(function(enemy) {
+            if (enemy.checkCollision(playerBounds)) {
+                bReset = true;
+            }
+        });
+        if (bReset) {
+            reset('collision');
+        }
+    }
+
     /* This function does nothing but it could have been a good place to
      * handle game reset states - maybe a new game menu or a game over screen
      * those sorts of things. It's only called once by the init() method.
      */
-    function reset() {
-        // TODO: Differentiate between crash and finish?
+    function reset(type) {
+        // TODO: Differentiate between collision and success?
+        if (type === 'collision') {
+            // TODO: Lose life
+        } else if (type === 'success') {
+            // TODO: increment score
+            // TODO: adjust level of difficulty?
+        }
+        if (type) {
+            console.log(type);
+        }
         allEnemies.forEach(function(enemy) {
             enemy.reset();
         });
@@ -179,7 +201,11 @@ var Engine = (function(global) {
         'images/water-block.png',
         'images/grass-block.png',
         'images/enemy-bug.png',
-        'images/char-boy.png'
+        'images/char-boy.png',
+        'images/char-cat-girl.png',
+        'images/char-horn-girl.png',
+        'images/char-pink-girl.png',
+        'images/char-princess-girl.png'
     ]);
     Resources.onReady(init);
 
@@ -206,6 +232,10 @@ var Engine = (function(global) {
 
         rowCount: function() {
             return numRows;
+        },
+
+        columnSize: function() {
+            return colSize;
         }
     };
 })(this);
