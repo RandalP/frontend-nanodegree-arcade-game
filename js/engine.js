@@ -36,12 +36,6 @@ var Engine = (function(global) {
     var colSize = canvas.width / numCols;
     var rowSize = 83;
     var gameOver = false;
-    var highScore = 0;
-
-    // Retrieve previous high score.
-    if (localStorage.highScore) {
-        highScore = Number(localStorage.highScore);
-    }
 
     /* This function serves as the kickoff point for the game loop itself
      * and handles properly calling the update and render methods.
@@ -138,7 +132,7 @@ var Engine = (function(global) {
 
         // Output player's number of lives and score.
         ctx.clearRect(0, 0, colSize * numCols, rowSize);
-        ctx.fillText("Lives: " + player.lives + "  Score: " + player.score + "  High Score: " + highScore, 0, rowSize / 2);
+        ctx.fillText("Lives: " + player.lives + "  Score: " + player.score + "  High Score: " + player.highScore, 0, rowSize / 2);
 
         /* Loop through the number of rows and columns we've defined above
          * and, using the rowImages array, draw the correct image for that
@@ -161,11 +155,11 @@ var Engine = (function(global) {
             ctx.textAlign = 'center';
             ctx.font = 'bold 84px Arial';
             ctx.fillText("Game Over", colSize * 2.5, numRows * rowSize * 0.66);
-            if (player.score > highScore) {
-                localStorage.highScore = player.score;
+            if (player.score > player.highScore) {
                 ctx.font = 'bold 48px Arial';
                 ctx.fillText("New High Score: " + player.score, colSize * 2.5, numRows * rowSize * 0.66 + rowSize);
             }
+            player.persist();
         }
     }
 

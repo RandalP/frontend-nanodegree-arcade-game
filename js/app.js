@@ -6,7 +6,7 @@ var Enemy = function() {
     // The image/sprite for our enemies, this uses
     // a helper we've provided to easily load images
     this.sprite = 'images/enemy-bug.png';
-    this.speedFactor = 50;
+    this.speedFactor = 25;
 };
 
 // Update the enemy's position, required method for game
@@ -65,16 +65,24 @@ var Player = function() {
         'images/char-pink-girl.png',
         'images/char-princess-girl.png'
     ];
+
     this.spriteNum = 0;
+    if (localStorage.spriteNum) {
+        this.spriteNum = Number(localStorage.spriteNum);
+    }
+    this.highScore = 0;
+
+    if (localStorage.highScore) {
+        this.highScore = Number(localStorage.highScore);
+    }
+
     this.pos = { col: 0, row: 0 };
     this.move_vec = { col: 0, row: 0 };
     this.lives = 3;
     this.score = 0;
 };
 
-/*
-    Set starting values as well as handle both collisions and successful crossings.
-*/
+// Set starting values as well as handle both collisions and successful crossings.
 Player.prototype.reset = function(type) {
     var img = Resources.get(this.sprites[this.spriteNum]);
     this.yOffset = Math.floor(img.height * 0.6);
@@ -86,28 +94,20 @@ Player.prototype.reset = function(type) {
         this.lives -= 1;
     } else if (type == 'crossing') {
         this.score += 1;
+        if (this.score % 10 === 0) {
+            this.lives += 1;
+        }
     }
 };
 
-/*
-    Applies moves to player position.
-*/
+// Applies moves to player position.
 Player.prototype.update = function() {
     this.pos.col += this.move_vec.col;
     this.pos.row += this.move_vec.row;
     this.move_vec.col = this.move_vec.row = 0;
 };
 
-/*
-    Returns true if player has reached the water.
-*/
-Player.prototype.hasCrossed = function() {
-    return (this.pos.row === Engine.rowCount() - 1);
-};
-
-/*
-    Returns the x bounds and row.
-*/
+// Returns the x bounds and row.
 Player.prototype.getBounds = function() {
     // Total image width is 101px
     // Actual image width is 66px, approximately 17px from left.
@@ -117,6 +117,19 @@ Player.prototype.getBounds = function() {
         row: this.pos.row
     };
 };
+
+// Returns true if player has reached the water.
+Player.prototype.hasCrossed = function() {
+    return (this.pos.row === Engine.rowCount() - 1);
+};
+
+// Persists the player's information.
+Player.prototype.persist = function() {
+    if (this.score > this.highScore) {
+        localStorage.highScore = this.score;
+    }
+    localStorage.spriteNum = this.spriteNum;
+}
 
 Player.prototype.render = function() {
     this.x = Engine.calcColumn(this.pos.col);
@@ -147,7 +160,7 @@ Player.prototype.handleInput = function(key) {
         }
         break;
     case 'space':
-        if (this.pos.row === 0) { // Change player's sprite
+        if (this.pos.row < 2) { // Change player's sprite
             this.spriteNum = (this.spriteNum + 1) % this.sprites.length;
         }
         break;
