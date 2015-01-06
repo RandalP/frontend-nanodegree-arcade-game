@@ -6,6 +6,7 @@ var Enemy = function() {
     // The image/sprite for our enemies, this uses
     // a helper we've provided to easily load images
     this.sprite = 'images/enemy-bug.png';
+    this.speedFactor = 50;
 };
 
 // Update the enemy's position, required method for game
@@ -14,15 +15,15 @@ Enemy.prototype.update = function(dt) {
     // You should multiply any movement by the dt parameter
     // which will ensure the game runs at the same speed for
     // all computers.
-    this.x += this.speedFactor * dt;
+    this.x += this.speed * dt;
     if (this.x > ctx.canvas.width) {
         this.reset();
     }
 };
 
-Enemy.prototype.reset = function() {
+Enemy.prototype.reset = function(type) {
     var img = Resources.get(this.sprite);
-    this.yOffset = Math.floor(img.height * 0.4);
+    this.yOffset = Math.floor(img.height * 0.6);
 
     this.x = 0;
 
@@ -33,12 +34,15 @@ Enemy.prototype.reset = function() {
 
     // Randomly choose row from 2-4
     this.row = generate(2, 4);
-    this.y = Engine.calcRowCenter(this.row) - this.yOffset;
+    this.y = Engine.calcRow(this.row) - this.yOffset;
 
-    // speedFactor can be increased over time or level
-    // Generate base speed factor
-    this.speedFactor = generate(50, 150);
-}
+    // speedFactor increased as more crossings are made
+    if (type == 'crossing') {
+        this.speedFactor += 5;
+    }
+    // Generate speed
+    this.speed = generate(1, 3) * this.speedFactor;
+};
 
 // Draw the enemy on the screen, required method for game
 Enemy.prototype.render = function() {
@@ -47,8 +51,8 @@ Enemy.prototype.render = function() {
 
 Enemy.prototype.checkCollision = function(bounds) {
     // Check if we are in the same row or x min/max overlaps
-    return !(bounds.row != this.row || this.x + 4 > bounds.xMax || this.x + Engine.columnSize() - 4 < bounds.xMin);
-}
+    return !(bounds.row != this.row || this.x + 5 > bounds.xMax || this.x + Engine.columnSize() - 5 < bounds.xMin);
+};
 
 // Now write your own player class
 // This class requires an update(), render() and
@@ -64,24 +68,46 @@ var Player = function() {
     this.spriteNum = 0;
     this.pos = { col: 0, row: 0 };
     this.move_vec = { col: 0, row: 0 };
+    this.lives = 3;
+    this.score = 0;
 };
 
-Player.prototype.reset = function() {
+/*
+    Set starting values as well as handle both collisions and successful crossings.
+*/
+Player.prototype.reset = function(type) {
     var img = Resources.get(this.sprites[this.spriteNum]);
-    this.yOffset = Math.floor(img.height * 0.4);
+    this.yOffset = Math.floor(img.height * 0.6);
     this.pos.col = Math.floor(Engine.columnCount() / 2);
     this.pos.row = 0;
     this.x = this.y = 0;
+
+    if (type === 'collision') {
+        this.lives -= 1;
+    } else if (type == 'crossing') {
+        this.score += 1;
+    }
 };
 
+/*
+    Applies moves to player position.
+*/
 Player.prototype.update = function() {
     this.pos.col += this.move_vec.col;
     this.pos.row += this.move_vec.row;
     this.move_vec.col = this.move_vec.row = 0;
-    return (this.pos.row == Engine.rowCount() - 1);
 };
 
+/*
+    Returns true if player has reached the water.
+*/
+Player.prototype.hasCrossed = function() {
+    return (this.pos.row === Engine.rowCount() - 1);
+};
 
+/*
+    Returns the x bounds and row.
+*/
 Player.prototype.getBounds = function() {
     // Total image width is 101px
     // Actual image width is 66px, approximately 17px from left.
@@ -90,11 +116,11 @@ Player.prototype.getBounds = function() {
         xMax: this.x + 83,
         row: this.pos.row
     };
-}
+};
 
 Player.prototype.render = function() {
-    this.x = Engine.calcColumnCenter(this.pos.col);
-    this.y = Engine.calcRowCenter(this.pos.row) - this.yOffset;
+    this.x = Engine.calcColumn(this.pos.col);
+    this.y = Engine.calcRow(this.pos.row) - this.yOffset;
     ctx.drawImage(Resources.get(this.sprites[this.spriteNum]), this.x, this.y);
 };
 
@@ -121,7 +147,7 @@ Player.prototype.handleInput = function(key) {
         }
         break;
     case 'space':
-        if (this.pos.row == 0) {
+        if (this.pos.row === 0) { // Change player's sprite
             this.spriteNum = (this.spriteNum + 1) % this.sprites.length;
         }
         break;

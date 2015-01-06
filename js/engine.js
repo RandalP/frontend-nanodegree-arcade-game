@@ -29,10 +29,19 @@ var Engine = (function(global) {
     canvas.height = 606;
     doc.body.appendChild(canvas);
 
+    ctx.font = 'bold 30px Arial';
+
     var numRows = 6;
     var numCols = 5;
     var colSize = canvas.width / numCols;
     var rowSize = 83;
+    var gameOver = false;
+    var highScore = 0;
+
+    // Retrieve previous high score.
+    if (localStorage.highScore) {
+        highScore = Number(localStorage.highScore);
+    }
 
     /* This function serves as the kickoff point for the game loop itself
      * and handles properly calling the update and render methods.
@@ -61,7 +70,9 @@ var Engine = (function(global) {
         /* Use the browser's requestAnimationFrame function to call this
          * function again as soon as the browser is able to draw another frame.
          */
-        win.requestAnimationFrame(main);
+        if (!this.gameOver) {
+            win.requestAnimationFrame(main);
+        }
     }
 
     /* This function does some initial setup that should only occur once,
@@ -99,8 +110,9 @@ var Engine = (function(global) {
         allEnemies.forEach(function(enemy) {
             enemy.update(dt);
         });
-        if (player.update()) {
-            reset('success');
+        player.update();
+        if (player.hasCrossed()) {
+            reset('crossing');
         }
     }
 
@@ -124,6 +136,10 @@ var Engine = (function(global) {
             ];
         var row, col;
 
+        // Output player's number of lives and score.
+        ctx.clearRect(0, 0, colSize * numCols, rowSize);
+        ctx.fillText("Lives: " + player.lives + "  Score: " + player.score + "  High Score: " + highScore, 0, rowSize / 2);
+
         /* Loop through the number of rows and columns we've defined above
          * and, using the rowImages array, draw the correct image for that
          * portion of the "grid"
@@ -141,7 +157,16 @@ var Engine = (function(global) {
             }
         }
         renderEntities();
-        // ctx.fillText("Test", 10, 10);
+        if (this.gameOver) {
+            ctx.textAlign = 'center';
+            ctx.font = 'bold 84px Arial';
+            ctx.fillText("Game Over", colSize * 2.5, numRows * rowSize * 0.66);
+            if (player.score > highScore) {
+                localStorage.highScore = player.score;
+                ctx.font = 'bold 48px Arial';
+                ctx.fillText("New High Score: " + player.score, colSize * 2.5, numRows * rowSize * 0.66 + rowSize);
+            }
+        }
     }
 
     /* This function is called by the render function and is called on each game
@@ -176,20 +201,11 @@ var Engine = (function(global) {
      * those sorts of things. It's only called once by the init() method.
      */
     function reset(type) {
-        // TODO: Differentiate between collision and success?
-        if (type === 'collision') {
-            // TODO: Lose life
-        } else if (type === 'success') {
-            // TODO: increment score
-            // TODO: adjust level of difficulty?
-        }
-        if (type) {
-            console.log(type);
-        }
         allEnemies.forEach(function(enemy) {
-            enemy.reset();
+            enemy.reset(type);
         });
-        player.reset();
+        player.reset(type);
+        this.gameOver = (player.lives === 0);
     }
 
     /* Go ahead and load all of the images we know we're going to need to
@@ -216,14 +232,14 @@ var Engine = (function(global) {
     global.ctx = ctx;
 
     return {
-        calcColumnCenter: function(col) {
+        calcColumn: function(col) {
             // col from 0 .. numCols - 1
-            return Math.floor(colSize * (col /*+ 0.5 */));
+            return Math.floor(colSize * col);
         },
 
-        calcRowCenter: function(row) {
-            // row from 0, .. numRows - 1
-            return Math.floor((numRows - row - 0.5) * rowSize);
+        calcRow: function(row) {
+            // row from 0, .. numRows - 1 in reverse order
+            return Math.floor((numRows - row) * rowSize);
         },
 
         columnCount: function() {
