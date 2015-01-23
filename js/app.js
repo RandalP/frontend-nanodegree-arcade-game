@@ -1,5 +1,9 @@
-// Enemies our player must avoid
+/**
+ * Represents an enemy our player must avoid.
+ * @constructor Enemy
+ */
 var Enemy = function() {
+    "use strict";
     // Variables applied to each of our instances go here,
     // we've provided one for you to get started
 
@@ -9,9 +13,13 @@ var Enemy = function() {
     this.speedFactor = 25;
 };
 
-// Update the enemy's position, required method for game
-// Parameter: dt, a time delta between ticks
+/**
+ * Update the enemy's position, required method for game.
+ * @method Enemy#update
+ * @param { double} dt - a time delta between ticks.
+ */
 Enemy.prototype.update = function(dt) {
+    "use strict";
     // You should multiply any movement by the dt parameter
     // which will ensure the game runs at the same speed for
     // all computers.
@@ -21,13 +29,23 @@ Enemy.prototype.update = function(dt) {
     }
 };
 
+/**
+ * @param { String } type - the type of reset being performed.
+ * @method Enemy#reset
+ */
 Enemy.prototype.reset = function(type) {
+    "use strict";
     var img = Resources.get(this.sprite);
     this.yOffset = Math.floor(img.height * 0.6);
 
     this.x = 0;
 
-    // generate a random number in the range [from, to]
+    /**
+     * @function
+     * Generate a random number in the range [from, to].
+     * @param { int } from - lower bounds for random number.
+     * @param { int } to - upper bounds for random number.
+     */
     function generate(from, to) {
         return from + Math.floor(Math.random() * (to - from + 1));
     }
@@ -37,27 +55,42 @@ Enemy.prototype.reset = function(type) {
     this.y = Engine.calcRow(this.row) - this.yOffset;
 
     // speedFactor increased as more crossings are made
-    if (type == 'crossing') {
+    if (type === 'crossing') {
         this.speedFactor += 5;
     }
     // Generate speed
     this.speed = generate(1, 3) * this.speedFactor;
 };
 
-// Draw the enemy on the screen, required method for game
+/**
+ * Draw the enemy on the screen, required method for game.
+ * @method Enemy#render
+ */
 Enemy.prototype.render = function() {
+    "use strict";
     ctx.drawImage(Resources.get(this.sprite), this.x, this.y);
 };
 
+/**
+ * Checks if we are within the specified bounds.
+ * @method Enemy#checkCollision
+ * @param { Object } bounds - the region in the game.
+ * @param { int } bounds.row - the row within the game, starting from zero at the bottom of the screen.
+ * @param { int } bounds.xMin - the left-most x-value.
+ * @param { int } bounds.xMax - the right-most x-value.
+ */
 Enemy.prototype.checkCollision = function(bounds) {
+    "use strict";
     // Check if we are in the same row or x min/max overlaps
-    return !(bounds.row != this.row || this.x + 5 > bounds.xMax || this.x + Engine.columnSize() - 5 < bounds.xMin);
+    return !(bounds.row !== this.row || this.x + 5 > bounds.xMax || this.x + Engine.columnSize() - 5 < bounds.xMin);
 };
 
-// Now write your own player class
-// This class requires an update(), render() and
-// a handleInput() method.
+/**
+ * The character attempting to cross the road.
+ * @constructor Player
+ */
 var Player = function() {
+    "use strict";
     this.sprites = [
         'images/char-boy.png',
         'images/char-cat-girl.png',
@@ -82,8 +115,13 @@ var Player = function() {
     this.score = 0;
 };
 
-// Set starting values as well as handle both collisions and successful crossings.
+/**
+ * Set starting values as well as handle both collisions and successful crossings.
+ * @method Player#reset
+ * @param { String } type - the type of reset being performed.
+ */
 Player.prototype.reset = function(type) {
+    "use strict";
     var img = Resources.get(this.sprites[this.spriteNum]);
     this.yOffset = Math.floor(img.height * 0.6);
     this.pos.col = Math.floor(Engine.columnCount() / 2);
@@ -92,7 +130,7 @@ Player.prototype.reset = function(type) {
 
     if (type === 'collision') {
         this.lives -= 1;
-    } else if (type == 'crossing') {
+    } else if (type === 'crossing') {
         this.score += 1;
         if (this.score % 10 === 0) {
             this.lives += 1;
@@ -100,15 +138,24 @@ Player.prototype.reset = function(type) {
     }
 };
 
-// Applies moves to player position.
+/**
+ * Updates the position after applying moves.
+ * @method Player#update
+ */
 Player.prototype.update = function() {
+    "use strict";
     this.pos.col += this.move_vec.col;
     this.pos.row += this.move_vec.row;
     this.move_vec.col = this.move_vec.row = 0;
 };
 
-// Returns the x bounds and row.
+/**
+ * Returns the x bounds and row.
+ * @method Player#getBounds
+ * @returns { Bounds }
+ */
 Player.prototype.getBounds = function() {
+    "use strict";
     // Total image width is 101px
     // Actual image width is 66px, approximately 17px from left.
     return {
@@ -118,26 +165,47 @@ Player.prototype.getBounds = function() {
     };
 };
 
-// Returns true if player has reached the water.
+/**
+ * Returns true if player has crossed the road and reached the water.
+ * @method Player#hasCrossed
+ * @returns { Boolean }
+ */
 Player.prototype.hasCrossed = function() {
+    "use strict";
     return (this.pos.row === Engine.rowCount() - 1);
 };
 
-// Persists the player's information.
+/**
+ * Persists the player's information into local storage.
+ * @ method Player.persist
+*/
 Player.prototype.persist = function() {
+    "use strict";
     if (this.score > this.highScore) {
         localStorage.highScore = this.score;
     }
     localStorage.spriteNum = this.spriteNum;
 }
 
+/**
+ * Draws the player's image.
+ * @method Player#render
+ */
 Player.prototype.render = function() {
+    "use strict";
     this.x = Engine.calcColumn(this.pos.col);
     this.y = Engine.calcRow(this.pos.row) - this.yOffset;
     ctx.drawImage(Resources.get(this.sprites[this.spriteNum]), this.x, this.y);
 };
 
+/**
+ * Responds to user key input.
+ * @method Player#handleInput
+ * @listens keyup
+ * @param { String } key - the name of the key pressed.
+ */
 Player.prototype.handleInput = function(key) {
+    "use strict";
     switch (key) {
     case'left':
         if (this.pos.col > 0) {
@@ -155,7 +223,7 @@ Player.prototype.handleInput = function(key) {
         }
         break;
     case 'down':
-        if (this.pos.row > 0 && this.pos.row != Engine.rowCount() - 1) {
+        if (this.pos.row > 0 && this.pos.row !== Engine.rowCount() - 1) {
             this.move_vec.row -= 1;
         }
         break;
@@ -167,16 +235,23 @@ Player.prototype.handleInput = function(key) {
     }
 };
 
-// Now instantiate your objects.
-// Place all enemy objects in an array called allEnemies
-// Place the player object in a variable called player
+/**
+ * The list of enemies objects.
+ * @global
+ */
 var allEnemies = [new Enemy(), new Enemy(), new Enemy()];
+
+/**
+ * The player object.
+ * @global
+ */
 var player = new Player();
 
 
 // This listens for key presses and sends the keys to your
 // Player.handleInput() method. You don't need to modify this.
 document.addEventListener('keyup', function(e) {
+    "use strict";
     var allowedKeys = {
         32: 'space',
         37: 'left',
