@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: engine.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: engine.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/* Engine.js
+ * This file provides the game loop functionality (update entities and render),
+ * draws the initial game board on the screen, and then calls the update and
+ * render methods on your player and enemy objects (defined in your app.js).
+ *
+ * A game engine works by drawing the entire game screen over and over, kind of
+ * like a flipbook you may have created as a kid. When your player moves across
+ * the screen, it may look like just that image/character is moving or being
+ * drawn but that is not the case. What's really happening is the entire "scene"
+ * is being drawn over and over, presenting the illusion of animation.
+ *
+ * This engine is available globally via the Engine variable and it also makes
+ * the canvas' context (ctx) object globally available to make writing app.js
+ * a little simpler to work with.
+ */
+
+/**
+ * @constructor Engine
+ * @param {Object} global - the browser runtime enviroment
+ */
+var Engine = (function(global) {
+    /* Predefine the variables we'll be using within this scope,
+     * create the canvas element, grab the 2D context for that canvas
+     * set the canvas elements height/width and add it to the DOM.
+     */
+    var doc = global.document,
+        win = global.window,
+        canvas = doc.createElement('canvas'),
+        ctx = canvas.getContext('2d'),
+        lastTime;
+
+    canvas.width = 505;
+    canvas.height = 606;
+    doc.body.appendChild(canvas);
+
+    ctx.font = 'bold 30px Arial';
+
+    var numRows = 6;
+    var numCols = 5;
+    var colSize = canvas.width / numCols;
+    var rowSize = 83;
+    var gameOver = false;
+
+    /**
+     * The kickoff point for the game loop itself, which calls the update
+     * and render methods.
+     * @method Engine#main
+     */
+    function main() {
+        /* Get our time delta information which is required if your game
+         * requires smooth animation. Because everyone's computer processes
+         * instructions at different speeds we need a constant value that
+         * would be the same for everyone (regardless of how fast their
+         * computer is) - hurray time!
+         */
+        var now = Date.now(),
+            dt = (now - lastTime) / 1000.0;
+
+        /* Call our update/render functions, pass along the time delta to
+         * our update function since it may be used for smooth animation.
+         */
+        update(dt);
+        render();
+
+        /* Set our lastTime variable which is used to determine the time delta
+         * for the next time this function is called.
+         */
+        lastTime = now;
+
+        /* Use the browser's requestAnimationFrame function to call this
+         * function again as soon as the browser is able to draw another frame.
+         */
+        if (!this.gameOver) {
+            win.requestAnimationFrame(main);
+        }
+    }
+
+    /**
+     * Performs some initial setup that should only occur once, particularly
+     * setting the lastTime variable that is required for the game loop.
+     * @method Engine#init
+     */
+    function init() {
+        reset('init');
+        lastTime = Date.now();
+        main();
+    }
+
+    /**
+     * Called by main (our game loop) and itself calls all of the functions
+     * which may need to update entity's data and check for collisions.
+     * @method Engine#update
+     * @param {number} dt - the time delta between ticks
+     */
+    function update(dt) {
+        updateEntities(dt);
+        checkCollisions();
+    }
+
+    /**
+     * Called by the update function and updates allEnemies and the player.
+     * @method Engine#updateEntities
+     * @param {number} dt - the time delta between ticks
+     */
+    function updateEntities(dt) {
+        allEnemies.forEach(function(enemy) {
+            enemy.update(dt);
+        });
+        player.update();
+        if (player.hasCrossed()) {
+            reset('crossing');
+        }
+    }
+
+    /**
+     * Called for every game tick to draw the "game level" and then the
+     * renderEntities function.
+     * @method Engine#render
+     */
+    function render() {
+        /* This array holds the relative URL to the image used
+         * for that particular row of the game level.
+         */
+        var rowImages = [
+                'images/water-block.png',   // Top row is water
+                'images/stone-block.png',   // Row 1 of 3 of stone
+                'images/stone-block.png',   // Row 2 of 3 of stone
+                'images/stone-block.png',   // Row 3 of 3 of stone
+                'images/grass-block.png',   // Row 1 of 2 of grass
+                'images/grass-block.png'    // Row 2 of 2 of grass
+            ];
+        var row, col;
+
+        // Output player's number of lives and score.
+        ctx.clearRect(0, 0, colSize * numCols, rowSize);
+        ctx.fillText(" Lives: " + player.lives + "  Score: " + player.score + "  High Score: " + player.highScore, 0, rowSize / 2);
+
+        /* Loop through the number of rows and columns we've defined above
+         * and, using the rowImages array, draw the correct image for that
+         * portion of the "grid"
+         */
+        for (row = 0; row &lt; numRows; row++) {
+            for (col = 0; col &lt; numCols; col++) {
+                /* The drawImage function of the canvas' context element
+                 * requires 3 parameters: the image to draw, the x coordinate
+                 * to start drawing and the y coordinate to start drawing.
+                 * We're using our Resources helpers to refer to our images
+                 * so that we get the benefits of caching these images, since
+                 * we're using them over and over.
+                 */
+                ctx.drawImage(Resources.get(rowImages[row]), col * colSize, row * rowSize);
+            }
+        }
+        renderEntities();
+        if (this.gameOver) {
+            ctx.textAlign = 'center';
+            ctx.font = 'bold 84px Arial';
+            ctx.fillText("Game Over", colSize * 2.5, numRows * rowSize * 0.66);
+            if (player.score > player.highScore) {
+                ctx.font = 'bold 48px Arial';
+                ctx.fillText("New High Score: " + player.score, colSize * 2.5, numRows * rowSize * 0.66 + rowSize);
+            }
+            player.persist();
+        }
+    }
+
+    /**
+     * Called on each game tick to render the player and all enemies.
+     * @method Enemy#renderEntities
+     */
+    function renderEntities() {
+        /* Loop through all of the objects within the allEnemies array and call
+         * the render function you have defined.
+         */
+        allEnemies.forEach(function(enemy) {
+            enemy.render();
+        });
+        player.render();
+    }
+
+    /**
+     * Checks if the player has collided with any enemies and if true, updates the game.
+     * @method Engine#checkCollisions
+     */
+    function checkCollisions() {
+        var playerBounds = player.getBounds();
+        var bReset = false;
+        allEnemies.forEach(function(enemy) {
+            if (enemy.checkCollision(playerBounds)) {
+                bReset = true;
+            }
+        });
+        if (bReset) {
+            reset('collision');
+        }
+    }
+
+    /**
+     * Handles initial setup of enemies and player and resetting them after
+     * collisions and crossings.
+     * @function Engine#reset
+     * @param {string} reason - Specifies the reason for the reset, with valid
+     * values: [ 'init', 'collision', 'crossing']
+     */
+    function reset(reason) {
+        if (reason === 'init') {
+            for (var i = 0; i &lt; 3; ++i) {
+                allEnemies.push(new Enemy());
+            }
+        } else if (player.score > 0 &amp;&amp; player.score % 10 === 0 &amp;&amp; reason === 'crossing') {
+            // Add an extra enemy every 10 successful crossings
+            allEnemies.push(new Enemy());
+        }
+        allEnemies.forEach(function(enemy) {
+            enemy.reset(reason);
+        });
+        player.reset(reason);
+        this.gameOver = (player.lives === 0);
+    }
+
+    /* Go ahead and load all of the images we know we're going to need to
+     * draw our game level. Then set init as the callback method, so that when
+     * all of these images are properly loaded our game will start.
+     */
+    Resources.load([
+        'images/stone-block.png',
+        'images/water-block.png',
+        'images/grass-block.png',
+        'images/enemy-bug.png',
+        'images/char-boy.png',
+        'images/char-cat-girl.png',
+        'images/char-horn-girl.png',
+        'images/char-pink-girl.png',
+        'images/char-princess-girl.png'
+    ]);
+    Resources.onReady(init);
+
+    /* Assign the canvas' context object to the global variable (the window
+     * object when run in a browser) so that developer's can use it more easily
+     * from within their app.js files.
+     */
+    global.ctx = ctx;
+
+    return {
+        /**
+         * Returns the x-value for the specified column.
+         * @method Engine#calcX
+         * @param {number} col - the column number from the range [0..numCols - 1]
+         * @returns {number} The x-value for the specified column.
+         */
+        calcX: function(col) {
+            return Math.floor(colSize * col);
+        },
+
+        /**
+         * Returns the y-value for the specified row.
+         * @method Engine#calcY
+         * @param {number} row - the row number from the range [0..numRows - 1]
+         * @returns {number} The y-value for the specified row.
+         */
+        calcY: function(row) {
+            // Note row 0 is at the bottom of the screen
+            return Math.floor((numRows - row) * rowSize);
+        },
+
+        /**
+         * Returns the number of columns in the game.
+         * @method Engine#columnCount
+         * @returns {number} The number of columns.
+         */
+        columnCount: function() {
+            return numCols;
+        },
+
+        /**
+         * Returns the number of rows in the game.
+         * @method Engine#rowCount
+         * @returns {number} The number of rows.
+         */
+        rowCount: function() {
+            return numRows;
+        },
+
+        /**
+         * Returns the number of pixels per column.
+         * @method Engine#columnSize
+         * @returns {number} The number of pixels per column.
+         */
+        columnSize: function() {
+            return colSize;
+        }
+    };
+})(this);
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="Enemy.html">Enemy</a></li><li><a href="Engine.html">Engine</a></li><li><a href="Player.html">Player</a></li></ul><h3>Global</h3><ul><li><a href="global.html#allEnemies">allEnemies</a></li><li><a href="global.html#player">player</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.3.0-beta1</a> on Sat Jan 24 2015 15:21:52 GMT+1100 (AEDT)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>
