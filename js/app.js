@@ -1,4 +1,12 @@
 /**
+ * A region within the game board.
+ * @typedef {Object} Bounds
+ * @property {number} row - the row within the game, starting from zero at the bottom of the screen.
+ * @property {number} xMin - the left-most x-value.
+ * @property {number} xMax - the right-most x-value.
+ */
+
+/**
  * Represents an enemy our player must avoid.
  * @constructor Enemy
  */
@@ -11,12 +19,13 @@ var Enemy = function() {
     // a helper we've provided to easily load images
     this.sprite = 'images/enemy-bug.png';
     this.speedFactor = 25;
+    this.x = this.y = 0;
 };
 
 /**
  * Update the enemy's position, required method for game.
  * @method Enemy#update
- * @param { double} dt - a time delta between ticks.
+ * @param {double} dt - the time delta between ticks
  */
 Enemy.prototype.update = function(dt) {
     "use strict";
@@ -25,37 +34,41 @@ Enemy.prototype.update = function(dt) {
     // all computers.
     this.x += this.speed * dt;
     if (this.x > ctx.canvas.width) {
-        this.reset();
+        this.reset('init');
     }
 };
 
 /**
- * @param { String } type - the type of reset being performed.
+ * Resets the enemy characteristics, depending on reason.
  * @method Enemy#reset
+ * @param {string} reason - the reason for the reset being performed
  */
-Enemy.prototype.reset = function(type) {
+Enemy.prototype.reset = function(reason) {
     "use strict";
     var img = Resources.get(this.sprite);
     this.yOffset = Math.floor(img.height * 0.6);
 
-    this.x = 0;
-
     /**
-     * @function
      * Generate a random number in the range [from, to].
-     * @param { int } from - lower bounds for random number.
-     * @param { int } to - upper bounds for random number.
+     * @function Enemy.generate
+     * @param {number} from - lower bounds for random number
+     * @param {number} to - upper bounds for random number
+     * @returns {number} A random number in the range [from, t0].
      */
     function generate(from, to) {
         return from + Math.floor(Math.random() * (to - from + 1));
     }
 
-    // Randomly choose row from 2-4
-    this.row = generate(2, 4);
-    this.y = Engine.calcRow(this.row) - this.yOffset;
+    if (this.y === 0 || reason === 'init') {
+        // Randomly choose start position to reduce overlapping enemies
+        this.x = generate(-img.width, 0);
+        // Randomly choose row
+        this.row = generate(2, Engine.rowCount() - 2);
+        this.y = Engine.calcY(this.row) - this.yOffset;
+    }
 
     // speedFactor increased as more crossings are made
-    if (type === 'crossing') {
+    if (reason === 'crossing') {
         this.speedFactor += 5;
     }
     // Generate speed
@@ -72,12 +85,10 @@ Enemy.prototype.render = function() {
 };
 
 /**
- * Checks if we are within the specified bounds.
+ * Checks if the enemy is positiioned within the specified bounds.
  * @method Enemy#checkCollision
- * @param { Object } bounds - the region in the game.
- * @param { int } bounds.row - the row within the game, starting from zero at the bottom of the screen.
- * @param { int } bounds.xMin - the left-most x-value.
- * @param { int } bounds.xMax - the right-most x-value.
+ * @param {Bounds} bounds - the player's region within the game
+ * @return {Boolean} Whether this enemy has collided with the player.
  */
 Enemy.prototype.checkCollision = function(bounds) {
     "use strict";
@@ -118,9 +129,9 @@ var Player = function() {
 /**
  * Set starting values as well as handle both collisions and successful crossings.
  * @method Player#reset
- * @param { String } type - the type of reset being performed.
+ * @param {string} reason - the reason for the reset being performed.
  */
-Player.prototype.reset = function(type) {
+Player.prototype.reset = function(reason) {
     "use strict";
     var img = Resources.get(this.sprites[this.spriteNum]);
     this.yOffset = Math.floor(img.height * 0.6);
@@ -128,9 +139,9 @@ Player.prototype.reset = function(type) {
     this.pos.row = 0;
     this.x = this.y = 0;
 
-    if (type === 'collision') {
+    if (reason === 'collision') {
         this.lives -= 1;
-    } else if (type === 'crossing') {
+    } else if (reason === 'crossing') {
         this.score += 1;
         if (this.score % 10 === 0) {
             this.lives += 1;
@@ -150,9 +161,9 @@ Player.prototype.update = function() {
 };
 
 /**
- * Returns the x bounds and row.
+ * Returns the position of the player in the game board.
  * @method Player#getBounds
- * @returns { Bounds }
+ * @returns {Bounds} The position of the player in the game board.
  */
 Player.prototype.getBounds = function() {
     "use strict";
@@ -168,7 +179,7 @@ Player.prototype.getBounds = function() {
 /**
  * Returns true if player has crossed the road and reached the water.
  * @method Player#hasCrossed
- * @returns { Boolean }
+ * @returns {Boolean} Whether the player has crossed yet.
  */
 Player.prototype.hasCrossed = function() {
     "use strict";
@@ -177,7 +188,7 @@ Player.prototype.hasCrossed = function() {
 
 /**
  * Persists the player's information into local storage.
- * @ method Player.persist
+ * @method Player#persist
 */
 Player.prototype.persist = function() {
     "use strict";
@@ -193,8 +204,8 @@ Player.prototype.persist = function() {
  */
 Player.prototype.render = function() {
     "use strict";
-    this.x = Engine.calcColumn(this.pos.col);
-    this.y = Engine.calcRow(this.pos.row) - this.yOffset;
+    this.x = Engine.calcX(this.pos.col);
+    this.y = Engine.calcY(this.pos.row) - this.yOffset;
     ctx.drawImage(Resources.get(this.sprites[this.spriteNum]), this.x, this.y);
 };
 
@@ -202,7 +213,7 @@ Player.prototype.render = function() {
  * Responds to user key input.
  * @method Player#handleInput
  * @listens keyup
- * @param { String } key - the name of the key pressed.
+ * @param {string} key - the name of the key pressed.
  */
 Player.prototype.handleInput = function(key) {
     "use strict";
@@ -239,7 +250,7 @@ Player.prototype.handleInput = function(key) {
  * The list of enemies objects.
  * @global
  */
-var allEnemies = [new Enemy(), new Enemy(), new Enemy()];
+var allEnemies = [];
 
 /**
  * The player object.

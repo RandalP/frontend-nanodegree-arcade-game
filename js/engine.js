@@ -14,6 +14,10 @@
  * a little simpler to work with.
  */
 
+/**
+ * @constructor Engine
+ * @param {Object} global - the browser runtime enviroment
+ */
 var Engine = (function(global) {
     /* Predefine the variables we'll be using within this scope,
      * create the canvas element, grab the 2D context for that canvas
@@ -37,8 +41,10 @@ var Engine = (function(global) {
     var rowSize = 83;
     var gameOver = false;
 
-    /* This function serves as the kickoff point for the game loop itself
-     * and handles properly calling the update and render methods.
+    /**
+     * The kickoff point for the game loop itself, which calls the update
+     * and render methods.
+     * @method Engine#main
      */
     function main() {
         /* Get our time delta information which is required if your game
@@ -69,36 +75,32 @@ var Engine = (function(global) {
         }
     }
 
-    /* This function does some initial setup that should only occur once,
-     * particularly setting the lastTime variable that is required for the
-     * game loop.
+    /**
+     * Performs some initial setup that should only occur once, particularly
+     * setting the lastTime variable that is required for the game loop.
+     * @method Engine#init
      */
     function init() {
-        reset();
+        reset('init');
         lastTime = Date.now();
         main();
     }
 
-    /* This function is called by main (our game loop) and itself calls all
-     * of the functions which may need to update entity's data. Based on how
-     * you implement your collision detection (when two entities occupy the
-     * same space, for instance when your character should die), you may find
-     * the need to add an additional function call here. For now, we've left
-     * it commented out - you may or may not want to implement this
-     * functionality this way (you could just implement collision detection
-     * on the entities themselves within your app.js file).
+    /**
+     * Called by main (our game loop) and itself calls all of the functions
+     * which may need to update entity's data and check for collisions.
+     * @method Engine#update
+     * @param {number} dt - the time delta between ticks
      */
     function update(dt) {
         updateEntities(dt);
         checkCollisions();
     }
 
-    /* This is called by the update function  and loops through all of the
-     * objects within your allEnemies array as defined in app.js and calls
-     * their update() methods. It will then call the update function for your
-     * player object. These update methods should focus purely on updating
-     * the data/properties related to  the object. Do your drawing in your
-     * render methods.
+    /**
+     * Called by the update function and updates allEnemies and the player.
+     * @method Engine#updateEntities
+     * @param {number} dt - the time delta between ticks
      */
     function updateEntities(dt) {
         allEnemies.forEach(function(enemy) {
@@ -110,11 +112,10 @@ var Engine = (function(global) {
         }
     }
 
-    /* This function initially draws the "game level", it will then call
-     * the renderEntities function. Remember, this function is called every
-     * game tick (or loop of the game engine) because that's how games work -
-     * they are flipbooks creating the illusion of animation but in reality
-     * they are just drawing the entire screen over and over.
+    /**
+     * Called for every game tick to draw the "game level" and then the
+     * renderEntities function.
+     * @method Engine#render
      */
     function render() {
         /* This array holds the relative URL to the image used
@@ -132,7 +133,7 @@ var Engine = (function(global) {
 
         // Output player's number of lives and score.
         ctx.clearRect(0, 0, colSize * numCols, rowSize);
-        ctx.fillText("Lives: " + player.lives + "  Score: " + player.score + "  High Score: " + player.highScore, 0, rowSize / 2);
+        ctx.fillText(" Lives: " + player.lives + "  Score: " + player.score + "  High Score: " + player.highScore, 0, rowSize / 2);
 
         /* Loop through the number of rows and columns we've defined above
          * and, using the rowImages array, draw the correct image for that
@@ -163,9 +164,9 @@ var Engine = (function(global) {
         }
     }
 
-    /* This function is called by the render function and is called on each game
-     * tick. It's purpose is to then call the render functions you have defined
-     * on your enemy and player entities within app.js
+    /**
+     * Called on each game tick to render the player and all enemies.
+     * @method Enemy#renderEntities
      */
     function renderEntities() {
         /* Loop through all of the objects within the allEnemies array and call
@@ -177,6 +178,10 @@ var Engine = (function(global) {
         player.render();
     }
 
+    /**
+     * Checks if the player has collided with any enemies and if true, updates the game.
+     * @method Engine#checkCollisions
+     */
     function checkCollisions() {
         var playerBounds = player.getBounds();
         var bReset = false;
@@ -190,15 +195,26 @@ var Engine = (function(global) {
         }
     }
 
-    /* This function does nothing but it could have been a good place to
-     * handle game reset states - maybe a new game menu or a game over screen
-     * those sorts of things. It's only called once by the init() method.
+    /**
+     * Handles initial setup of enemies and player and resetting them after
+     * collisions and crossings.
+     * @function Engine#reset
+     * @param {string} reason - Specifies the reason for the reset, with valid
+     * values: [ 'init', 'collision', 'crossing']
      */
-    function reset(type) {
+    function reset(reason) {
+        if (reason === 'init') {
+            for (var i = 0; i < 3; ++i) {
+                allEnemies.push(new Enemy());
+            }
+        } else if (player.score > 0 && player.score % 10 === 0 && reason === 'crossing') {
+            // Add an extra enemy every 10 successful crossings
+            allEnemies.push(new Enemy());
+        }
         allEnemies.forEach(function(enemy) {
-            enemy.reset(type);
+            enemy.reset(reason);
         });
-        player.reset(type);
+        player.reset(reason);
         this.gameOver = (player.lives === 0);
     }
 
@@ -226,24 +242,50 @@ var Engine = (function(global) {
     global.ctx = ctx;
 
     return {
-        calcColumn: function(col) {
-            // col from 0 .. numCols - 1
+        /**
+         * Returns the x-value for the specified column.
+         * @method Engine#calcX
+         * @param {number} col - the column number from the range [0..numCols - 1]
+         * @returns {number} The x-value for the specified column.
+         */
+        calcX: function(col) {
             return Math.floor(colSize * col);
         },
 
-        calcRow: function(row) {
-            // row from 0, .. numRows - 1 in reverse order
+        /**
+         * Returns the y-value for the specified row.
+         * @method Engine#calcY
+         * @param {number} row - the row number from the range [0..numRows - 1]
+         * @returns {number} The y-value for the specified row.
+         */
+        calcY: function(row) {
+            // Note row 0 is at the bottom of the screen
             return Math.floor((numRows - row) * rowSize);
         },
 
+        /**
+         * Returns the number of columns in the game.
+         * @method Engine#columnCount
+         * @returns {number} The number of columns.
+         */
         columnCount: function() {
             return numCols;
         },
 
+        /**
+         * Returns the number of rows in the game.
+         * @method Engine#rowCount
+         * @returns {number} The number of rows.
+         */
         rowCount: function() {
             return numRows;
         },
 
+        /**
+         * Returns the number of pixels per column.
+         * @method Engine#columnSize
+         * @returns {number} The number of pixels per column.
+         */
         columnSize: function() {
             return colSize;
         }
