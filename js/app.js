@@ -18,7 +18,7 @@ var Enemy = function() {
     // The image/sprite for our enemies, this uses
     // a helper we've provided to easily load images
     this.sprite = 'images/enemy-bug.png';
-    this.speedFactor = 25;
+    this.speedFactor = 20;
     this.x = this.y = 0;
 };
 
@@ -69,10 +69,10 @@ Enemy.prototype.reset = function(reason) {
 
     // speedFactor increased as more crossings are made
     if (reason === 'crossing') {
-        this.speedFactor += 5;
+        this.speedFactor += 1;
     }
     // Generate speed
-    this.speed = generate(1, 3) * this.speedFactor;
+    this.speed = generate(1, 6) * this.speedFactor;
 };
 
 /**
